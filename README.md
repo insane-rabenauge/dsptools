@@ -1,5 +1,5 @@
 ```
-tSCc DSP-Cross Development Utils Release 2.0
+tSCc DSP-Cross Development Utils Release 2.1
 
 cldlod:
   based upon original Motorola sources; 64bit fixed by insane
