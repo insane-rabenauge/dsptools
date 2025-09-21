@@ -1,5 +1,9 @@
 /* $Id: cldlod.c,v 1.46 1999/03/19 19:51:39 jay Exp $ */
-// 64bit fixed by insane/tSCc 19.09.2018
+/*
+  fixed by insane/Rabenauge^tSCc
+  20180919: 64bit fixed
+  20250921: c23 fixed
+*/
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -8,14 +12,8 @@
 #include <signal.h>
 #include <time.h>
 #include <errno.h>
-#if defined ( __WATCOMC__ ) || defined( __GNUC__ ) || defined( MPW )
 #include <stdarg.h>
-#else
-#include <varargs.h>
-#endif
-#if !defined ( MPW )
 #include <sys/types.h>
-#endif
 
 #define SKIPSYMBOLS 0
 /* Headers for working with COFF files */
@@ -830,14 +828,14 @@ struct comment {	/* comment structure */
 };
 
 /* function definitions */
-static void cld_to_lod();
-static void read_headers();
-static void collect_comments();
-static void read_strings();
-static void start_record();
-static void read_sections();
-static void dump_comments();
-static void dump_data();
+static void cld_to_lod(void);
+static void read_headers(void);
+static void collect_comments(void);
+static void read_strings(void);
+static void start_record(void);
+static void read_sections(void);
+static void dump_comments(int scnum);
+static void dump_data(XCNHDR *sh);
 static void dump_deb_symbols (void);
 static int freads (char *ptr, int size, int nitems,FILE *stream);
 static void dump_se_d (SYMENT *se);
@@ -846,13 +844,8 @@ static void dump_se_d (SYMENT *se);
 static void swapw (char *ptr, int size, int nitems);
 #endif
 
-#if defined ( __WATCOMC__ ) || defined( __GNUC__ ) || defined( MPW )
 static void eprintf( FILE*, char*, ... );
 static void error( char*, ... );
-#else
-static void eprintf();
-static void error();
-#endif
 
 int32_t symentsize = SYMESZ;
 /*  Global variables  */
@@ -882,21 +875,13 @@ int  space = 777; /* 0=p, 1=x, 2=y, 3=l, 4=N */
 struct comment *com_head = NULL;	/* head of comment chain */
 struct comment *cur_cmt = NULL;		/* current comment in chain */
 
-static void
-onintr (int signum)			/* clean up from signal */
+static void onintr (int signum)			/* clean up from signal */
 {
-    void exit ();
-
     exit (1);
 }
 
-void
-main (argc, argv)
-int argc;
-char *argv[];
+void main (int argc, char* argv[])
 {
-    void exit ();
-
     /* set up for signals, save program name, check for command line options */
     signal (SIGINT, onintr);
 
@@ -918,8 +903,7 @@ char *argv[];
 }
 
 
-static void
-cld_to_lod()
+static void cld_to_lod(void)
 {
     read_headers ();
 
@@ -946,8 +930,7 @@ cld_to_lod()
         n_sclass == C_NULL
 	n_type   == T_NULL
 */
-static void
-start_record()
+static void start_record(void)
 {
     SYMENT se;
     int32_t i = 0, sym_id = -709;
@@ -1014,8 +997,7 @@ start_record()
 }
 
 
-static void
-read_headers ()
+static void read_headers (void)
 {
     if ( freads( (char *)&file_header, sizeof (FILHDR), 1, ifile ) != 1 )
 	error ("cannot read file header");
@@ -1091,8 +1073,7 @@ read_headers ()
 }
 
 
-static void
-read_strings ()
+static void read_strings (void)
 {
     int32_t strings;
 
@@ -1116,8 +1097,7 @@ read_strings ()
     }
 }
 
-static void
-collect_comments ()
+static void collect_comments (void)
 {
     SYMENT se;
     AUXENT ae;
@@ -1168,8 +1148,7 @@ collect_comments ()
     cur_cmt = com_head;		/* initialize current comment */
 }
 
-static void
-read_sections()
+static void read_sections(void)
 {
     int i;
     XCNHDR sh;		/* Section header structure */
@@ -1193,9 +1172,7 @@ read_sections()
 }
 
 
-static void
-dump_comments (scnum)
-int scnum;
+static void dump_comments (int scnum)
 {
     while ( cur_cmt && cur_cmt->c_scno <= scnum )
     {
@@ -1216,9 +1193,7 @@ int scnum;
 }
 
 
-char *
-get_secname (sh)
-XCNHDR *sh;
+char * get_secname (XCNHDR *sh)
 {
     char *secname;
 
@@ -1236,11 +1211,9 @@ XCNHDR *sh;
 }
 
 
-static void
-dump_data (sh)
-XCNHDR *sh;
+static void dump_data (XCNHDR *sh)
 {
-    char *secname, *get_secname ();
+    char *secname;
     int32_t *raw_data;
     int  j;
     char emi_name_buf[8];
@@ -1458,8 +1431,7 @@ XCNHDR *sh;
 }
 
 
-static void
-dump_deb_symbols ()
+static void dump_deb_symbols (void)
 {
     SYMENT se;
     AUXENT ae;
@@ -1527,9 +1499,7 @@ static char *map_chars[]={
 "E244", "E245", "E246", "E247", "E248", "E249", "E250", "E251", 
 "E252", "E253", "E254", "E255"
     };
-static void
-dump_se_d (se) /* for debug symbol table */
-SYMENT *se;
+static void dump_se_d (SYMENT *se) /* for debug symbol table */
 {
     int  old_space;
 #if 0
@@ -1672,11 +1642,7 @@ SYMENT *se;
 *		(big endian).  Calls fread to do I/O.
 *
 **/
-static int
-freads (ptr, size, nitems, stream)
-char *ptr;
-int size, nitems;
-FILE *stream;
+static int freads (char *ptr, int size, int nitems, FILE *stream)
 {
     int rc;
 
@@ -1711,10 +1677,7 @@ union wrd
 *		(big endian).
 *
 **/
-static void
-swapw (ptr, size, nitems)
-char *ptr;
-int size, nitems;
+static void swapw (char *ptr, int size, int nitems)
 {
     union wrd *w;
     union wrd *end = (union wrd *)ptr +	((size * nitems) / sizeof (union wrd));
@@ -1743,52 +1706,22 @@ int size, nitems;
 /* VARARGS */
 
 /* call fprintf, check for errors */
-static void
-#if defined ( __WATCOMC__ ) || defined( __GNUC__ ) || defined( MPW )
-eprintf (FILE *fp, char *fmt, ...)
-#else
-eprintf( va_alist )
-va_dcl
-#endif
-{
-    void exit ();
+static void eprintf (FILE *fp, char *fmt, ...) {
     va_list ap;
-#if defined ( __WATCOMC__ ) || defined( __GNUC__ ) || defined( MPW )
     va_start (ap, fmt);
-#else
-    FILE *fp;
-    char *fmt;
-    va_start (ap);
-    fp = va_arg (ap, FILE *);
-    fmt = va_arg (ap, char *);
-#endif
-    if (vfprintf (fp, fmt, ap) < 0)
-	error ("cannot write to output file");
+    if (vfprintf (fp, fmt, ap) < 0) error ("cannot write to output file");
     va_end (ap);
 }
 
 
 /* VARARGS */
-static void
-#if defined ( __WATCOMC__ ) || defined( __GNUC__ ) || defined( MPW )
-error (char *fmt, ...)		/* display error on stderr, exit nonzero */
-#else
-error (va_alist)		/* display error on stderr, exit nonzero */
-va_dcl
-#endif
+static void error (char *fmt, ...)		/* display error on stderr, exit nonzero */
 {
-    void exit ();
     va_list ap;
 #if !LINT
     int err = errno;
 #endif
-#if defined ( __WATCOMC__ ) || defined( __GNUC__ ) || defined( MPW )
     va_start (ap, fmt);
-#else
-    char *fmt;
-    va_start (ap);
-    fmt = va_arg (ap, char *);
-#endif
     fprintf  (stderr, "cldlod: ");
     vfprintf (stderr, fmt, ap);
     fprintf  (stderr, "\n");
